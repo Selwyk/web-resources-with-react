@@ -1,41 +1,48 @@
 import React from 'react';
 import CaseList from './CaseList.jsx';
 
-export default React.createClass({
+export default class CaseSummary extends React.Component {
 
-    getInitialState: function () {
-        return { cases: [] };
-    },
+    constructor(props) {
+        super(props);
+        this.state = { cases: [] };
+        this.loadCases = this.loadCases.bind(this);
+    }
 
-    loadCases: function () {
-        var url =
-            '/api/data/v8.0/incidents?' +
-            '$filter=statecode eq 0' +
-            '&$orderby=createdon desc' +
-            '&$top=10' +
-            '&$select=incidentid,title,createdon,ticketnumber';
+    loadCases() {
+        var url = '/api/data/v8.0/incidents?$filter=statecode eq 0&$orderby=createdon desc&$top=10&$select=incidentid,title,createdon,ticketnumber';
 
-        url = window.parent.Xrm.Page.context.prependOrgName(url);
+        var xrmContext = window.parent && window.parent.Xrm && window.parent.Xrm.Page && window.parent.Xrm.Page.context;
+        if (xrmContext) {
+            url = xrmContext.prependOrgName(url);
+        }
+
         fetch(url, {
             credentials: 'same-origin'
         })
-            .then(res => res.json())
-            .then(json => this.setState({ cases: json.value }));
-    },
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Network response was not ok: ' + res.status);
+                }
+                return res.json();
+            })
+            .then(json => this.setState({ cases: json.value }))
+            .catch(err => console.error('Failed to load cases:', err));
+    }
 
-    componentDidMount: function () {
+    componentDidMount() {
         this.loadCases();
         this.timerId = window.setInterval(this.loadCases, 10000);
-    },
+    }
 
-    componentWillUnmount: function () {
+    componentWillUnmount() {
         window.clearInterval(this.timerId);
-    },
+    }
 
-    render: function () {
+    render() {
         return (
             <CaseList cases={this.state.cases} />
         );
     }
 
-});
+}
